@@ -1,29 +1,27 @@
--- Server Script: Change Skybox and Play Audio for All Players
-local soundId = "rbxassetid://9043345732" -- Scary Audio ID
-local skyboxId = "rbxassetid://10798732439" -- Scary Skybox ID
-local lighting = game:GetService("Lighting")
+-- Server-side Script (ServerScriptService)
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
--- Function to play sound for all players
-local function playScaryAudio()
-    for _, player in ipairs(game.Players:GetPlayers()) do
-        local sound = Instance.new("Sound")
-        sound.SoundId = soundId
-        sound.Parent = player.Character or player:WaitForChild("Character")
-        sound:Play()
-    end
+-- Create RemoteEvents to communicate with clients
+local playAudioEvent = Instance.new("RemoteEvent")
+playAudioEvent.Name = "PlayAudioEvent"
+playAudioEvent.Parent = ReplicatedStorage
+
+local changeSkyboxEvent = Instance.new("RemoteEvent")
+changeSkyboxEvent.Name = "ChangeSkyboxEvent"
+changeSkyboxEvent.Parent = ReplicatedStorage
+
+-- Function to send a play audio request to the client
+local function playScaryAudio(player)
+    playAudioEvent:FireClient(player, "rbxassetid://9043345732")  -- Scary sound ID
 end
 
--- Function to change skybox for all players
-local function changeSkybox()
-    local sky = lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky", lighting)
-    sky.SkyboxBk = skyboxId
-    sky.SkyboxDn = skyboxId
-    sky.SkyboxFt = skyboxId
-    sky.SkyboxLf = skyboxId
-    sky.SkyboxRt = skyboxId
-    sky.SkyboxUp = skyboxId
+-- Function to send a change skybox request to the client
+local function changeScarySkybox(player)
+    changeSkyboxEvent:FireClient(player, "rbxassetid://10798732439")  -- Scary skybox ID
 end
 
--- Play audio and change skybox for all players when the server starts
-playScaryAudio()
-changeSkybox()
+-- Example usage - trigger these when the player joins the game
+game.Players.PlayerAdded:Connect(function(player)
+    playScaryAudio(player)
+    changeScarySkybox(player)
+end)
