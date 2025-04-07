@@ -1,4 +1,4 @@
--- Client-Side Script (Updated for RemoteEvent)
+-- Client-Side Script (Updated with Find Backdoors and Exit GUI functionality)
 
 -- Create ScreenGui
 local screenGui = Instance.new("ScreenGui")
@@ -24,7 +24,7 @@ title.Text = "Admin Controls"
 title.TextColor3 = Color3.fromRGB(255, 255, 255)
 title.TextSize = 18
 
--- Create a ScrollingFrame to hold buttons
+-- Create ScrollingFrame to hold buttons
 local scrollingFrame = Instance.new("ScrollingFrame")
 scrollingFrame.Parent = mainFrame
 scrollingFrame.Position = UDim2.new(0, 0, 0, 30)
@@ -61,3 +61,20 @@ end
 -- Create Buttons for GUI actions
 createButton("Play Audio", "PlayAudio")
 createButton("Change Skybox", "ChangeSkybox")
+createButton("Find Backdoors", "FindBackdoors")
+createButton("Exit GUI", "ExitGUI")
+
+-- Listen for responses from the server
+remoteEvent.OnClientEvent:Connect(function(action, data)
+    if action == "BackdoorsFound" then
+        print("Suspicious scripts found: ")
+        for _, backdoor in ipairs(data) do
+            print(backdoor)
+        end
+    elseif action == "NoBackdoors" then
+        print("No suspicious scripts found.")
+    elseif action == "ExitGUI" then
+        screenGui:Destroy()  -- Remove the GUI from the screen
+        print("GUI has been closed.")
+    end
+end)
