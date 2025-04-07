@@ -4,8 +4,8 @@ local lighting = game:GetService("Lighting")
 local replicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Variables
-local soundId = "rbxassetid://YOUR_SCARY_SOUND_ID" -- Replace with your scary sound ID
-local skyboxId = "rbxassetid://YOUR_APOCALYPTIC_SKYBOX_ID" -- Replace with your apocalyptic skybox ID
+local soundId = "rbxassetid://rbxassetid://9043345732" -- Replace with your scary sound ID
+local skyboxId = "rbxassetid://rbxassetid://10798732439" -- Replace with your apocalyptic skybox ID
 
 -- Remote Event for communication between client and server
 local nukeEvent = Instance.new("RemoteEvent")
