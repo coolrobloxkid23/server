@@ -1,80 +1,118 @@
--- Client-Side Script (Updated with Find Backdoors and Exit GUI functionality)
+-- Services
+local players = game:GetService("Players")
+local lighting = game:GetService("Lighting")
+local replicatedStorage = game:GetService("ReplicatedStorage")
 
--- Create ScreenGui
-local screenGui = Instance.new("ScreenGui")
-screenGui.Parent = game.CoreGui
-screenGui.Name = "CustomAdminGUI"
+-- Variables
+local soundId = "rbxassetid://YOUR_SCARY_SOUND_ID" -- Replace with your scary sound ID
+local skyboxId = "rbxassetid://YOUR_APOCALYPTIC_SKYBOX_ID" -- Replace with your apocalyptic skybox ID
 
--- Create the main Frame
-local mainFrame = Instance.new("Frame")
-mainFrame.Parent = screenGui
-mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-mainFrame.Position = UDim2.new(0.5, -100, 0.5, -150)
-mainFrame.Size = UDim2.new(0, 200, 0, 300)
-mainFrame.Active = true
-mainFrame.Draggable = true
+-- Remote Event for communication between client and server
+local nukeEvent = Instance.new("RemoteEvent")
+nukeEvent.Name = "NukeEvent"
+nukeEvent.Parent = replicatedStorage
 
--- Create Title Label
-local title = Instance.new("TextLabel")
-title.Parent = mainFrame
-title.BackgroundTransparency = 1
-title.Size = UDim2.new(1, 0, 0, 30)
-title.Font = Enum.Font.SourceSansBold
-title.Text = "Admin Controls"
-title.TextColor3 = Color3.fromRGB(255, 255, 255)
-title.TextSize = 18
+local backdoorEvent = Instance.new("RemoteEvent")
+backdoorEvent.Name = "BackdoorEvent"
+backdoorEvent.Parent = replicatedStorage
 
--- Create ScrollingFrame to hold buttons
-local scrollingFrame = Instance.new("ScrollingFrame")
-scrollingFrame.Parent = mainFrame
-scrollingFrame.Position = UDim2.new(0, 0, 0, 30)
-scrollingFrame.Size = UDim2.new(1, 0, 1, -30)
-scrollingFrame.CanvasSize = UDim2.new(0, 0, 0, 600) -- Adjust based on content
-scrollingFrame.ScrollBarThickness = 8
-scrollingFrame.BackgroundTransparency = 1
+-- Nuke Server Function (Kick and Chaos)
+local function nukeServer()
+    -- Play the scary Nuke sound
+    local sound = Instance.new("Sound")
+    sound.SoundId = soundId
+    sound.Parent = game.Workspace
+    sound:Play()
 
--- UI List Layout for automatic button arrangement
-local uiListLayout = Instance.new("UIListLayout")
-uiListLayout.Parent = scrollingFrame
-uiListLayout.SortOrder = Enum.SortOrder.LayoutOrder
-uiListLayout.Padding = UDim.new(0, 5)
+    -- Create the explosion effect (Big Red Ball)
+    local explosionEffect = Instance.new("Part")
+    explosionEffect.Size = Vector3.new(100, 100, 100)
+    explosionEffect.Shape = Enum.PartType.Ball
+    explosionEffect.Anchored = true
+    explosionEffect.CanCollide = false
+    explosionEffect.Material = Enum.Material.Neon
+    explosionEffect.Color = Color3.fromRGB(255, 0, 0)
+    explosionEffect.Position = game.Workspace.CurrentCamera.CFrame.Position
+    explosionEffect.Parent = game.Workspace
 
--- RemoteEvent for communication with server
-local remoteEvent = game:GetService("ReplicatedStorage"):WaitForChild("AdminControlsEvent")
+    wait(2) -- Explosion effect lasts for 2 seconds
+    explosionEffect:Destroy()
 
--- Function to create buttons in the GUI
-local function createButton(name, action)
-    local button = Instance.new("TextButton")
-    button.Parent = scrollingFrame
-    button.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
-    button.Size = UDim2.new(0.9, 0, 0, 40)
-    button.Font = Enum.Font.SourceSans
-    button.Text = name
-    button.TextColor3 = Color3.fromRGB(255, 255, 255)
-    button.TextSize = 14
-    button.MouseButton1Click:Connect(function()
-        remoteEvent:FireServer(action)  -- Send the action to the server
-    end)
-    return button
+    -- Change Skybox to something apocalyptic
+    local skybox = Instance.new("Sky", lighting)
+    skybox.SkyboxBk = skyboxId
+    skybox.SkyboxDn = skyboxId
+    skybox.SkyboxFt = skyboxId
+    skybox.SkyboxLf = skyboxId
+    skybox.SkyboxRt = skyboxId
+    skybox.SkyboxUp = skyboxId
+    wait(5) -- Skybox stays for 5 seconds
+    skybox:Destroy()
+
+    -- Temporarily kick all players with a spooky message
+    for _, player in pairs(players:GetPlayers()) do
+        if player.Character then
+            player:Kick("You've been nuked! See you soon... and enjoy your 10k cash!")
+        end
+    end
+
+    wait(5) -- Wait for the kick to finish
+
+    -- Reward players with 10k cash after being kicked
+    for _, player in pairs(players:GetPlayers()) do
+        if player and player.UserId then
+            -- Ensure player has a leaderstats and Cash stat
+            local leaderstats = player:FindFirstChild("leaderstats")
+            if leaderstats then
+                local cash = leaderstats:FindFirstChild("Cash")
+                if cash then
+                    cash.Value = cash.Value + 10000
+                end
+            end
+
+            -- Send a message to players that they’ve survived the nuke
+            game.ReplicatedStorage:FireClient(player, "Nuked and survived! 10k Cash awarded for your bravery!")
+        end
+    end
 end
 
--- Create Buttons for GUI actions
-createButton("Play Audio", "PlayAudio")
-createButton("Change Skybox", "ChangeSkybox")
-createButton("Find Backdoors", "FindBackdoors")
-createButton("Exit GUI", "ExitGUI")
-
--- Listen for responses from the server
-remoteEvent.OnClientEvent:Connect(function(action, data)
-    if action == "BackdoorsFound" then
-        print("Suspicious scripts found: ")
-        for _, backdoor in ipairs(data) do
-            print(backdoor)
+-- Find Backdoors Function (Scan for Malicious Code)
+local function findBackdoors()
+    local suspiciousScripts = {}
+    
+    -- Scan function to find malicious code
+    local function scan(obj)
+        for _, child in ipairs(obj:GetChildren()) do
+            if child:IsA("Script") or child:IsA("LocalScript") then
+                local source = child.Source
+                if source:find("require") or source:find("getfenv") then
+                    table.insert(suspiciousScripts, child:GetFullName())
+                end
+            end
+            scan(child)
         end
-    elseif action == "NoBackdoors" then
-        print("No suspicious scripts found.")
-    elseif action == "ExitGUI" then
-        screenGui:Destroy()  -- Remove the GUI from the screen
-        print("GUI has been closed.")
     end
+    scan(game)
+    
+    -- Show result
+    if #suspiciousScripts > 0 then
+        -- If suspicious scripts are found, show a notification
+        game.ReplicatedStorage:FireAllClients("Suspicious Scripts Found!")
+        for _, scriptName in ipairs(suspiciousScripts) do
+            warn("Suspicious script found: " .. scriptName)
+        end
+    else
+        -- If no suspicious scripts found, show a "safe" message
+        game.ReplicatedStorage:FireAllClients("No suspicious scripts found.")
+    end
+end
+
+-- Nuke Server Trigger (when button is clicked on the client)
+nukeEvent.OnServerEvent:Connect(function(player)
+    nukeServer()
+end)
+
+-- Find Backdoors Trigger (when button is clicked on the client)
+backdoorEvent.OnServerEvent:Connect(function(player)
+    findBackdoors()
 end)
