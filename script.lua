@@ -1,118 +1,114 @@
--- Services
-local players = game:GetService("Players")
-local lighting = game:GetService("Lighting")
-local replicatedStorage = game:GetService("ReplicatedStorage")
+-- Server-Side Script for Gear Insertion via GUI
+-- This script will allow players to paste a gear ID into a GUI and receive the gear in their inventory.
 
--- Variables
-local soundId = "rbxassetid://rbxassetid://9043345732" -- Replace with your scary sound ID
-local skyboxId = "rbxassetid://rbxassetid://10798732439" -- Replace with your apocalyptic skybox ID
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local Players = game:GetService("Players")
+local InsertService = game:GetService("InsertService")
 
--- Remote Event for communication between client and server
-local nukeEvent = Instance.new("RemoteEvent")
-nukeEvent.Name = "NukeEvent"
-nukeEvent.Parent = replicatedStorage
+-- Create a RemoteEvent for communication
+local gearRequestEvent = Instance.new("RemoteEvent")
+gearRequestEvent.Name = "GearRequestEvent"
+gearRequestEvent.Parent = ReplicatedStorage
 
-local backdoorEvent = Instance.new("RemoteEvent")
-backdoorEvent.Name = "BackdoorEvent"
-backdoorEvent.Parent = replicatedStorage
-
--- Nuke Server Function (Kick and Chaos)
-local function nukeServer()
-    -- Play the scary Nuke sound
-    local sound = Instance.new("Sound")
-    sound.SoundId = soundId
-    sound.Parent = game.Workspace
-    sound:Play()
-
-    -- Create the explosion effect (Big Red Ball)
-    local explosionEffect = Instance.new("Part")
-    explosionEffect.Size = Vector3.new(100, 100, 100)
-    explosionEffect.Shape = Enum.PartType.Ball
-    explosionEffect.Anchored = true
-    explosionEffect.CanCollide = false
-    explosionEffect.Material = Enum.Material.Neon
-    explosionEffect.Color = Color3.fromRGB(255, 0, 0)
-    explosionEffect.Position = game.Workspace.CurrentCamera.CFrame.Position
-    explosionEffect.Parent = game.Workspace
-
-    wait(2) -- Explosion effect lasts for 2 seconds
-    explosionEffect:Destroy()
-
-    -- Change Skybox to something apocalyptic
-    local skybox = Instance.new("Sky", lighting)
-    skybox.SkyboxBk = skyboxId
-    skybox.SkyboxDn = skyboxId
-    skybox.SkyboxFt = skyboxId
-    skybox.SkyboxLf = skyboxId
-    skybox.SkyboxRt = skyboxId
-    skybox.SkyboxUp = skyboxId
-    wait(5) -- Skybox stays for 5 seconds
-    skybox:Destroy()
-
-    -- Temporarily kick all players with a spooky message
-    for _, player in pairs(players:GetPlayers()) do
-        if player.Character then
-            player:Kick("You've been nuked! See you soon... and enjoy your 10k cash!")
-        end
+-- Function to insert gear for a player based on gear ID input
+local function insertGear(assetId, player)
+    -- Validate asset ID
+    if not tonumber(assetId) then
+        return false, "Invalid Gear ID"
     end
 
-    wait(5) -- Wait for the kick to finish
+    -- Convert to number and check for valid asset ID
+    local gearId = tonumber(assetId)
+    local gear = InsertService:LoadAsset(gearId)
 
-    -- Reward players with 10k cash after being kicked
-    for _, player in pairs(players:GetPlayers()) do
-        if player and player.UserId then
-            -- Ensure player has a leaderstats and Cash stat
-            local leaderstats = player:FindFirstChild("leaderstats")
-            if leaderstats then
-                local cash = leaderstats:FindFirstChild("Cash")
-                if cash then
-                    cash.Value = cash.Value + 10000
-                end
-            end
-
-            -- Send a message to players that they’ve survived the nuke
-            game.ReplicatedStorage:FireClient(player, "Nuked and survived! 10k Cash awarded for your bravery!")
-        end
-    end
-end
-
--- Find Backdoors Function (Scan for Malicious Code)
-local function findBackdoors()
-    local suspiciousScripts = {}
-    
-    -- Scan function to find malicious code
-    local function scan(obj)
-        for _, child in ipairs(obj:GetChildren()) do
-            if child:IsA("Script") or child:IsA("LocalScript") then
-                local source = child.Source
-                if source:find("require") or source:find("getfenv") then
-                    table.insert(suspiciousScripts, child:GetFullName())
-                end
-            end
-            scan(child)
-        end
-    end
-    scan(game)
-    
-    -- Show result
-    if #suspiciousScripts > 0 then
-        -- If suspicious scripts are found, show a notification
-        game.ReplicatedStorage:FireAllClients("Suspicious Scripts Found!")
-        for _, scriptName in ipairs(suspiciousScripts) do
-            warn("Suspicious script found: " .. scriptName)
-        end
+    if gear then
+        -- Add gear to player's character inventory
+        local character = player.Character or player.CharacterAdded:Wait()
+        gear.Parent = character
+        gear:MakeJoints()  -- Attach the gear to the player's character
+        return true
     else
-        -- If no suspicious scripts found, show a "safe" message
-        game.ReplicatedStorage:FireAllClients("No suspicious scripts found.")
+        return false, "Gear not found"
     end
 end
 
--- Nuke Server Trigger (when button is clicked on the client)
-nukeEvent.OnServerEvent:Connect(function(player)
-    nukeServer()
+-- Listen for remote event to handle gear request
+gearRequestEvent.OnServerEvent:Connect(function(player, gearId)
+    local success, message = insertGear(gearId, player)
+    if success then
+        -- Notify player they received the gear
+        player:SendNotification({Title = "Success!", Text = "You have received the gear!"})
+    else
+        -- Notify player of an error (invalid ID or failure)
+        player:SendNotification({Title = "Error", Text = message})
+    end
 end)
 
--- Find Backdoors Trigger (when button is clicked on the client)
-backdoorEvent.OnServerEvent:Connect(function(player)
-    findBackdoors()
+-- Client-Side GUI (Script to be placed in a LocalScript for the client)
+local function createGUI(player)
+    -- Create the main GUI
+    local screenGui = Instance.new("ScreenGui")
+    screenGui.Parent = player.PlayerGui
+    screenGui.Name = "GearInsertionGUI"
+
+    -- Create the main frame
+    local mainFrame = Instance.new("Frame")
+    mainFrame.Parent = screenGui
+    mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+    mainFrame.Position = UDim2.new(0.5, -200, 0.5, -100)
+    mainFrame.Size = UDim2.new(0, 400, 0, 200)
+    mainFrame.Active = true
+    mainFrame.Draggable = true
+
+    -- Create the Title
+    local title = Instance.new("TextLabel")
+    title.Parent = mainFrame
+    title.BackgroundTransparency = 1
+    title.Size = UDim2.new(1, 0, 0, 30)
+    title.Font = Enum.Font.SourceSansBold
+    title.Text = "Enter Gear ID"
+    title.TextColor3 = Color3.fromRGB(255, 255, 255)
+    title.TextSize = 18
+
+    -- Create a TextBox for gear ID input
+    local gearIdBox = Instance.new("TextBox")
+    gearIdBox.Parent = mainFrame
+    gearIdBox.Position = UDim2.new(0.5, -100, 0.3, 0)
+    gearIdBox.Size = UDim2.new(0, 200, 0, 30)
+    gearIdBox.Font = Enum.Font.SourceSans
+    gearIdBox.PlaceholderText = "Enter Gear ID"
+    gearIdBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+    gearIdBox.TextSize = 14
+
+    -- Create an Enter Button
+    local enterButton = Instance.new("TextButton")
+    enterButton.Parent = mainFrame
+    enterButton.Position = UDim2.new(0.5, -50, 0.6, 0)
+    enterButton.Size = UDim2.new(0, 100, 0, 40)
+    enterButton.Font = Enum.Font.SourceSansBold
+    enterButton.Text = "Enter"
+    enterButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+    enterButton.TextSize = 16
+    enterButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
+
+    -- Button click event to send Gear ID to server
+    enterButton.MouseButton1Click:Connect(function()
+        local gearId = gearIdBox.Text
+        if gearId and gearId ~= "" then
+            -- Send the Gear ID to the server to insert the gear
+            gearRequestEvent:FireServer(gearId)
+        else
+            -- Show an error notification if the Gear ID is empty
+            player:SendNotification({Title = "Error", Text = "Please enter a valid Gear ID!"})
+        end
+    end)
+end
+
+-- Create the GUI when the player joins the game
+game.Players.PlayerAdded:Connect(function(player)
+    -- Wait until the player's character is added
+    player.CharacterAdded:Wait()
+    
+    -- Create GUI for the player
+    createGUI(player)
 end)
